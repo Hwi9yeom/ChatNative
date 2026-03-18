@@ -1,5 +1,10 @@
 # English AI Tutor (영어 회화 AI 튜터)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6)](https://www.typescriptlang.org/)
+[![LangChain](https://img.shields.io/badge/LangChain-LCEL-1C3C3C)](https://js.langchain.com/)
+
 An AI-powered English conversation practice app built with scenario-based roleplay. Practice real-world English conversations with AI tutors that play different roles (barista, hotel receptionist, etc.) and get real-time grammar corrections and comprehensive feedback reports.
 
 ## Features
@@ -31,8 +36,8 @@ An AI-powered English conversation practice app built with scenario-based rolepl
 ### Installation
 
 ```bash
-git clone <repo-url>
-cd english-ai-tutor
+git clone https://github.com/Hwi9yeom/ChatNative.git
+cd ChatNative
 npm install
 ```
 
@@ -86,4 +91,6 @@ src/
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](./LICENSE).
+
+Copyright (c) 2026 Hwi9yeom
