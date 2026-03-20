@@ -10,8 +10,9 @@ export async function POST(request: NextRequest) {
 
     const parsed = reportRequestSchema.safeParse(body);
     if (!parsed.success) {
+      console.warn('Report API validation error:', parsed.error.format());
       return NextResponse.json(
-        { error: 'Invalid request', details: parsed.error.format() },
+        { error: 'Invalid request' },
         { status: 400 }
       );
     }
@@ -19,9 +20,10 @@ export async function POST(request: NextRequest) {
     const { scenarioId, conversationHistory, corrections } = parsed.data;
 
     if (!process.env.OPENAI_API_KEY) {
+      console.error('Report API error: OPENAI_API_KEY is not configured');
       return NextResponse.json(
-        { error: 'OPENAI_API_KEY is not configured' },
-        { status: 500 }
+        { error: 'Service temporarily unavailable' },
+        { status: 503 }
       );
     }
 
@@ -29,9 +31,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Report API error:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Report API error:', message);
     return NextResponse.json(
-      { error: 'Failed to generate report. Please try again.' },
+      { error: 'Failed to generate response' },
       { status: 500 }
     );
   }

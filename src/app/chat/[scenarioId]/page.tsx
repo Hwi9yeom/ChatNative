@@ -1,22 +1,22 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useConversationStore } from '@/store/conversationStore';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { SCENARIOS } from '@/lib/scenarios';
+import { MAX_TURNS } from '@/lib/constants';
 import ChatWindow from '@/components/ChatWindow';
 import MicButton from '@/components/MicButton';
 import TextInput from '@/components/TextInput';
 import TurnIndicator from '@/components/TurnIndicator';
 import type { ChatResponse } from '@/lib/types';
 
-const MAX_TURNS = 20;
-
 export default function ChatPage() {
   const params = useParams();
   const router = useRouter();
-  const scenarioId = params.scenarioId as string;
+  const rawId = params.scenarioId;
+  const scenarioId = Array.isArray(rawId) ? rawId[0] : rawId ?? '';
 
   const scenario = SCENARIOS.find((s) => s.id === scenarioId);
 
@@ -42,6 +42,14 @@ export default function ChatPage() {
     error: speechError,
   } = useSpeechRecognition();
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   // Initialize scenario with hardcoded first message
   useEffect(() => {
     if (!scenario) return;
@@ -60,6 +68,7 @@ export default function ChatPage() {
 
   const sendMessage = useCallback(
     async (text: string) => {
+      const { messages, isLoading, turnCount } = useConversationStore.getState();
       if (!text.trim() || isLoading || turnCount >= MAX_TURNS) return;
 
       // Build conversation history BEFORE adding the new message
@@ -73,6 +82,9 @@ export default function ChatPage() {
       incrementTurn();
       setLoading(true);
 
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       try {
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -82,6 +94,7 @@ export default function ChatPage() {
             userMessage: text,
             conversationHistory: history,
           }),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -98,6 +111,7 @@ export default function ChatPage() {
         // Add AI response
         addMessage({ role: 'assistant', content: data.reply });
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         console.error('[sendMessage] Failed to get chat response:', err);
         addMessage({
           role: 'assistant',
@@ -107,7 +121,7 @@ export default function ChatPage() {
         setLoading(false);
       }
     },
-    [scenarioId, messages, isLoading, turnCount, addMessage, incrementTurn, setLoading, updateLastUserCorrections]
+    [scenarioId, addMessage, incrementTurn, setLoading, updateLastUserCorrections]
   );
 
   const handleEndConversation = () => {

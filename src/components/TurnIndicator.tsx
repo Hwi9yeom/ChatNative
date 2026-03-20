@@ -1,7 +1,4 @@
-'use client';
-
-const MAX_TURNS = 20;
-const WARN_TURNS = 15;
+import { MAX_TURNS, WARN_TURNS } from '@/lib/constants';
 
 interface TurnIndicatorProps {
   turnCount: number;

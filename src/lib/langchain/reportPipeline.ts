@@ -5,6 +5,15 @@ import { reportResponseSchema } from './schemas';
 import { buildReportSystemPrompt, getScenarioById } from './prompts';
 import type { Correction } from '@/lib/types';
 
+const model = new ChatOpenAI({
+  model: 'gpt-4o',
+  temperature: 0.3,
+});
+
+function sanitizeForPromptTemplate(text: string): string {
+  return text.replace(/\{/g, '{{').replace(/\}/g, '}}').slice(0, 2000);
+}
+
 export async function runReportPipeline(
   scenarioId: string,
   conversationHistory: { role: 'user' | 'assistant'; content: string }[],
@@ -15,17 +24,12 @@ export async function runReportPipeline(
     throw new Error(`Unknown scenario: ${scenarioId}`);
   }
 
-  const model = new ChatOpenAI({
-    model: 'gpt-4o',
-    temperature: 0.3,
-  });
-
   const modelWithStructuredOutput = model.withStructuredOutput(reportResponseSchema);
 
   const systemPrompt = buildReportSystemPrompt();
 
   const transcript = conversationHistory
-    .map((msg) => `${msg.role === 'user' ? 'Student' : 'AI Tutor'}: ${msg.content}`)
+    .map((msg) => `${msg.role === 'user' ? 'Student' : 'AI Tutor'}: ${sanitizeForPromptTemplate(msg.content)}`)
     .join('\n');
 
   const correctionsText = corrections.length > 0

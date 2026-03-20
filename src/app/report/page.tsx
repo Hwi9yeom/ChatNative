@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useConversationStore } from '@/store/conversationStore';
 import ReportView from '@/components/ReportView';
@@ -8,17 +8,38 @@ import type { ReportResponse } from '@/lib/types';
 
 export default function ReportPage() {
   const router = useRouter();
-  const { scenarioId, messages, allCorrections, reset } = useConversationStore();
+  const { reset } = useConversationStore();
   const [report, setReport] = useState<ReportResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const hasRequested = useRef(false);
 
   useEffect(() => {
-    // Redirect if no conversation data
+    const unsub = useConversationStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+    if (useConversationStore.persist.hasHydrated()) {
+      setHydrated(true);
+    }
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (hasRequested.current) return;
+
+    const { scenarioId, messages, allCorrections } = useConversationStore.getState();
+
     if (!scenarioId || messages.length === 0) {
       router.replace('/');
       return;
     }
+
+    hasRequested.current = true;
+
+    const controller = new AbortController();
 
     const generateReport = async () => {
       try {
@@ -35,6 +56,7 @@ export default function ReportPage() {
             conversationHistory,
             corrections: allCorrections,
           }),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -43,7 +65,8 @@ export default function ReportPage() {
 
         const data: ReportResponse = await response.json();
         setReport(data);
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         setError('Failed to generate report. Please try again.');
       } finally {
         setIsLoading(false);
@@ -51,13 +74,18 @@ export default function ReportPage() {
     };
 
     generateReport();
-  }, [scenarioId, messages, allCorrections, router]);
+
+    return () => {
+      controller.abort();
+    };
+  }, [hydrated, router, retryCount]);
 
   const handleRetry = () => {
     setError(null);
     setIsLoading(true);
-    // Re-trigger the effect
-    window.location.reload();
+    setReport(null);
+    hasRequested.current = false;
+    setRetryCount((c) => c + 1);
   };
 
   const handleTryAnother = () => {
@@ -66,9 +94,9 @@ export default function ReportPage() {
   };
 
   const handleRetryScenario = () => {
-    const currentScenarioId = scenarioId;
+    const { scenarioId } = useConversationStore.getState();
     reset();
-    router.push(`/chat/${currentScenarioId}`);
+    router.push(`/chat/${scenarioId}`);
   };
 
   if (isLoading) {
@@ -113,7 +141,6 @@ export default function ReportPage() {
       <main className="max-w-3xl mx-auto px-4 py-8">
         <ReportView report={report} />
 
-        {/* Action buttons */}
         <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={handleRetryScenario}

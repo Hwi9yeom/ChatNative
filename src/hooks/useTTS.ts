@@ -11,9 +11,20 @@ interface UseTTSReturn {
 
 export function useTTS(): UseTTSReturn {
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const isSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+  useEffect(() => {
+    if (!isSupported) return;
+    setVoices(window.speechSynthesis.getVoices());
+    const handleVoicesChanged = () => setVoices(window.speechSynthesis.getVoices());
+    window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+    return () => {
+      window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+    };
+  }, [isSupported]);
 
   useEffect(() => {
     return () => {
@@ -34,8 +45,6 @@ export function useTTS(): UseTTSReturn {
       utterance.rate = 0.9;
       utterance.pitch = 1;
 
-      // Try to find an English voice
-      const voices = window.speechSynthesis.getVoices();
       const englishVoice = voices.find(
         (v) => v.lang.startsWith('en') && v.name.includes('Female')
       ) || voices.find((v) => v.lang.startsWith('en'));
@@ -50,7 +59,7 @@ export function useTTS(): UseTTSReturn {
       utteranceRef.current = utterance;
       window.speechSynthesis.speak(utterance);
     },
-    [isSupported]
+    [isSupported, voices]
   );
 
   const cancel = useCallback(() => {

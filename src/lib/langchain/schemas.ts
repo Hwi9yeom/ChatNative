@@ -2,16 +2,16 @@ import { z } from 'zod';
 
 // Correction schema (shared)
 export const correctionSchema = z.object({
-  original: z.string().describe("The exact text the user said that contains an error"),
-  corrected: z.string().describe("The grammatically correct or more natural version"),
+  original: z.string().max(500).describe("The exact text the user said that contains an error"),
+  corrected: z.string().max(500).describe("The grammatically correct or more natural version"),
   type: z.enum(["grammar", "expression", "vocabulary"]).describe("The type of error"),
-  explanation: z.string().describe("A brief explanation of why this is incorrect and how to fix it"),
+  explanation: z.string().max(500).describe("A brief explanation of why this is incorrect and how to fix it"),
 });
 
 // Chat response schema (for withStructuredOutput)
 export const chatResponseSchema = z.object({
   reply: z.string().describe("Your in-character roleplay response to the user (2-3 sentences max)"),
-  corrections: z.array(correctionSchema).describe("List of grammar, expression, or vocabulary errors found in the user's message. Empty array if no errors."),
+  corrections: z.array(correctionSchema).max(100).describe("List of grammar, expression, or vocabulary errors found in the user's message. Empty array if no errors."),
   conversationComplete: z.boolean().describe("Set to true when the conversation has reached a natural ending point"),
 });
 
@@ -30,19 +30,19 @@ export const reportResponseSchema = z.object({
 
 // API request validation schemas
 export const chatRequestSchema = z.object({
-  scenarioId: z.string(),
-  userMessage: z.string(),
+  scenarioId: z.string().max(50),
+  userMessage: z.string().min(1).max(2000),
   conversationHistory: z.array(z.object({
     role: z.enum(["user", "assistant"]),
-    content: z.string(),
-  })),
+    content: z.string().max(2000),
+  })).max(40),
 });
 
 export const reportRequestSchema = z.object({
-  scenarioId: z.string(),
+  scenarioId: z.string().max(50),
   conversationHistory: z.array(z.object({
     role: z.enum(["user", "assistant"]),
-    content: z.string(),
-  })),
-  corrections: z.array(correctionSchema),
+    content: z.string().max(2000),
+  })).max(40),
+  corrections: z.array(correctionSchema).max(100),
 });

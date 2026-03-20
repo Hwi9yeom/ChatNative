@@ -12,6 +12,7 @@ export default function ScoreGauge({ score }: ScoreGaugeProps) {
   useEffect(() => {
     const duration = 1500;
     const startTime = Date.now();
+    let rafId: number;
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
@@ -20,11 +21,12 @@ export default function ScoreGauge({ score }: ScoreGaugeProps) {
       const eased = 1 - Math.pow(1 - progress, 3);
       setDisplayScore(Math.round(eased * score));
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        rafId = requestAnimationFrame(animate);
       }
     };
 
-    requestAnimationFrame(animate);
+    rafId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafId);
   }, [score]);
 
   const radius = 80;
